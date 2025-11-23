@@ -28,7 +28,7 @@ class Trivia_Challenge_Block {
 	 *
 	 * @return Trivia_Challenge_Block
 	 */
-	public static function get_instance() {
+	public static function get_instance(): ?Trivia_Challenge_Block {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
@@ -78,7 +78,7 @@ class Trivia_Challenge_Block {
 	 * @param WP_Block_Editor_Context $context    Block editor context.
 	 * @return array Modified categories array.
 	 */
-	public function register_block_category( $categories, $context ) {
+	public function register_block_category( $categories, $context ): array {
 		return array_merge(
 			$categories,
 			array(

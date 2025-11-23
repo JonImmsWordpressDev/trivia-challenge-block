@@ -55,7 +55,8 @@ class Trivia_Challenge_CLI {
 	 *
 	 * @when after_wp_load
 	 */
-	public function test_api( $args, $assoc_args ) {
+	public function test_api( $args, $assoc_args ): void
+	{
 		$category   = isset( $assoc_args['category'] ) ? $assoc_args['category'] : 'mixed';
 		$difficulty = isset( $assoc_args['difficulty'] ) ? $assoc_args['difficulty'] : 'medium';
 

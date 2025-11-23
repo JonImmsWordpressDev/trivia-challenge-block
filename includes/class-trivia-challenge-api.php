@@ -104,7 +104,7 @@ class Trivia_Challenge_API {
 	 * @param string $param Category parameter.
 	 * @return bool
 	 */
-	public static function validate_category( $param ) {
+	public static function validate_category( $param ): bool {
 		return array_key_exists( $param, self::CATEGORY_MAP );
 	}
 
@@ -114,7 +114,7 @@ class Trivia_Challenge_API {
 	 * @param string $param Difficulty parameter.
 	 * @return bool
 	 */
-	public static function validate_difficulty( $param ) {
+	public static function validate_difficulty( $param ): bool {
 		return in_array( $param, array( 'easy', 'medium', 'hard', 'any' ), true );
 	}
 
@@ -124,7 +124,7 @@ class Trivia_Challenge_API {
 	 * @param int $param Amount parameter.
 	 * @return bool
 	 */
-	public static function validate_amount( $param ) {
+	public static function validate_amount( $param ): bool {
 		return $param >= 1 && $param <= 50;
 	}
 
