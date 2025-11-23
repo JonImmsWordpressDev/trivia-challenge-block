@@ -121,7 +121,7 @@ class Trivia_Challenge_Admin {
 	 *
 	 * @return array
 	 */
-	public static function get_default_settings() {
+	public static function get_default_settings(): array {
 		return array(
 			'default_category'   => 'mixed',
 			'default_difficulty' => 'medium',
@@ -137,7 +137,7 @@ class Trivia_Challenge_Admin {
 	 *
 	 * @return array
 	 */
-	public static function get_settings() {
+	public static function get_settings(): array {
 		$settings = get_option( self::OPTION_NAME, array() );
 		return wp_parse_args( $settings, self::get_default_settings() );
 	}
@@ -148,7 +148,7 @@ class Trivia_Challenge_Admin {
 	 * @param array $input Settings input.
 	 * @return array
 	 */
-	public static function sanitize_settings( $input ) {
+	public static function sanitize_settings( $input ): array {
 		$sanitized = array();
 
 		if ( isset( $input['default_category'] ) ) {
