@@ -1,0 +1,54 @@
+/**
+ * Admin Styles for Trivia Challenge Settings
+ */
+
+.trivia-challenge-settings {
+	max-width: 800px;
+}
+
+.trivia-challenge-settings h2 {
+	margin-top: 2em;
+}
+
+.trivia-challenge-settings .form-table th {
+	width: 200px;
+}
+
+.trivia-challenge-settings .description {
+	font-style: italic;
+	color: #666;
+}
+
+.trivia-challenge-cache-actions {
+	margin-top: 20px;
+	padding: 20px;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.trivia-challenge-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 15px;
+	margin-top: 20px;
+}
+
+.trivia-challenge-stat-card {
+	padding: 15px;
+	background: white;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.trivia-challenge-stat-card h4 {
+	margin: 0 0 10px;
+	font-size: 14px;
+	color: #666;
+}
+
+.trivia-challenge-stat-card .stat-value {
+	font-size: 24px;
+	font-weight: bold;
+	color: #2271b1;
+}

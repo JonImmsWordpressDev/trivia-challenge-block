@@ -1,0 +1,74 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "trivia-challenge/quiz-block",
+	"version": "2.0.0",
+	"title": "Trivia Challenge",
+	"category": "trivia-challenge",
+	"icon": "games",
+	"description": "An interactive general knowledge trivia quiz with multiple categories and difficulty levels.",
+	"keywords": [
+		"trivia",
+		"quiz",
+		"game",
+		"knowledge",
+		"education",
+		"interactive",
+		"test"
+	],
+	"textdomain": "trivia-challenge-block",
+	"supports": {
+		"html": false,
+		"align": [ "wide", "full" ],
+		"anchor": true,
+		"customClassName": true,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"attributes": {
+		"defaultCategory": {
+			"type": "string",
+			"default": "mixed"
+		},
+		"defaultDifficulty": {
+			"type": "string",
+			"default": "medium"
+		},
+		"questionsPerQuiz": {
+			"type": "number",
+			"default": 10
+		},
+		"timerDuration": {
+			"type": "number",
+			"default": 20
+		},
+		"showTimer": {
+			"type": "boolean",
+			"default": true
+		},
+		"showStreak": {
+			"type": "boolean",
+			"default": true
+		},
+		"enableSound": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"providesContext": {
+		"trivia-challenge/category": "defaultCategory",
+		"trivia-challenge/difficulty": "defaultDifficulty"
+	},
+	"example": {
+		"attributes": {
+			"defaultCategory": "science",
+			"defaultDifficulty": "medium"
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./editor.scss",
+	"style": "file:./style.scss",
+	"render": "file:./render.php"
+}

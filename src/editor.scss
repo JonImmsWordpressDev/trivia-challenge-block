@@ -1,0 +1,55 @@
+/**
+ * Editor Styles
+ */
+
+.trivia-challenge-editor-preview {
+    padding: 20px;
+
+    .trivia-preview-card {
+        background: var(--wp--preset--color--base, #f8f9fa);
+        border: 2px solid var(--wp--preset--color--contrast, #dee2e6);
+        border-radius: 8px;
+        padding: 60px 40px;
+        text-align: center;
+
+        .trivia-preview-content {
+            max-width: 600px;
+            margin: 0 auto;
+
+            .trivia-icon {
+                font-size: 4em;
+                display: block;
+                margin-bottom: 20px;
+            }
+
+            h3 {
+                font-size: 2em;
+                margin: 0 0 15px;
+                color: var(--wp--preset--color--contrast, #000);
+                font-weight: 700;
+            }
+
+            p {
+                font-size: 1.1em;
+                margin: 0 0 30px;
+                color: var(--wp--preset--color--contrast, #666);
+            }
+
+            .trivia-preview-features {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+
+                span {
+                    background: var(--wp--preset--color--base, #fff);
+                    border: 1px solid var(--wp--preset--color--contrast, #dee2e6);
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    font-size: 0.85em;
+                    color: var(--wp--preset--color--contrast, #000);
+                }
+            }
+        }
+    }
+}
