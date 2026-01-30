@@ -420,6 +420,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 	const [ timeLeft, setTimeLeft ] = useState( settings.timerDuration );
 	const [ streak, setStreak ] = useState( resumeState?.streak || 0 );
 	const [ scoreAnimating, setScoreAnimating ] = useState( false );
+	const [ streakAnimating, setStreakAnimating ] = useState( false );
 	const timerRef = useRef( null );
 	const announceRef = useRef( null );
 
@@ -508,6 +509,8 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 			setScore( score + totalPoints );
 			setCorrectAnswers( correctAnswers + 1 );
 			setStreak( streak + 1 );
+			setStreakAnimating( true );
+			setTimeout( () => setStreakAnimating( false ), 400 );
 			setScoreAnimating( true );
 			setTimeout( () => setScoreAnimating( false ), 300 );
 
@@ -615,7 +618,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 					</div>
 				) }
 				{ settings.showStreak && streak > 0 && (
-					<div className="trivia-score-item trivia-streak">
+					<div className={ `trivia-score-item trivia-streak${ streakAnimating ? ' streak-glow' : '' }${ streak >= 5 ? ' streak-fire' : '' }` }>
 						<div className="trivia-score-label">
 							{ __( 'Streak', 'trivia-challenge-block' ) }
 						</div>

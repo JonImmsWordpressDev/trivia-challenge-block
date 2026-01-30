@@ -152,6 +152,28 @@
     }
 }
 
+.trivia-streak.streak-glow {
+    animation: streakGlow 0.4s ease-out;
+}
+
+.trivia-streak.streak-fire {
+    background: linear-gradient(135deg, #ffc107 0%, #ff6b35 50%, #ffc107 100%) !important;
+    background-size: 200% 200% !important;
+    animation: fireGradient 1.5s ease infinite !important;
+}
+
+@keyframes streakGlow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+    50% { box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.4); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
+@keyframes fireGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
 // Category Select
 .trivia-category-select {
     margin-bottom: 24px;
