@@ -668,6 +668,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 
 		const isCorrect = originalIndex === currentQuestion.correct;
 		if ( isCorrect ) {
+			playSound( 'correct', settings );
 			const timeBonus = settings.showTimer
 				? Math.floor( timeLeft / 2 )
 				: 0;
@@ -688,6 +689,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 				);
 			}
 		} else {
+			playSound( 'wrong', settings );
 			setStreak( 0 );
 
 			if ( announceRef.current ) {
@@ -927,6 +929,12 @@ const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart, category, d
 		}
 	}, [ category, correctAnswers, totalQuestions, difficulty ] );
 
+	// Play completion sound
+	useEffect( () => {
+		const settings = getSettings();
+		playSound( 'complete', settings );
+	}, [] );
+
 	const percentage = Math.round( ( correctAnswers / totalQuestions ) * 100 );
 
 	let message = '';
@@ -1012,6 +1020,15 @@ const TriviaApp = () => {
 	const [ error, setError ] = useState( null );
 	const [ resumeState, setResumeState ] = useState( null );
 	const [ quizMeta, setQuizMeta ] = useState( { category: null, difficulty: null } );
+
+	// Preload sounds
+	useEffect( () => {
+		if ( settings.enableSound ) {
+			preloadSound( 'correct', getSoundUrl( 'correct.mp3' ) );
+			preloadSound( 'wrong', getSoundUrl( 'wrong.mp3' ) );
+			preloadSound( 'complete', getSoundUrl( 'complete.mp3' ) );
+		}
+	}, [ settings.enableSound ] );
 
 	const handleStart = async ( category, difficulty, resume = false ) => {
 		setError( null );
