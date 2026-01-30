@@ -116,10 +116,42 @@
     font-size: 2.2em;
     font-weight: 700;
     color: var(--wp--preset--color--contrast, #000);
+}
 
-    &.trivia-timer-warning {
-        color: #dc3545;
-        animation: pulse 0.5s ease-in-out infinite;
+.trivia-timer-item {
+    .trivia-timer-container {
+        position: relative;
+        height: 32px;
+        background: var(--wp--preset--color--base, #e9ecef);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .trivia-timer-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: var(--wp--preset--color--contrast, #000);
+        border-radius: 4px;
+        transition: width 0.3s linear;
+
+        &.trivia-timer-warning {
+            background: #dc3545;
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+    }
+
+    .trivia-timer-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1em;
+        font-weight: 700;
+        color: var(--wp--preset--color--contrast, #000);
+        z-index: 1;
+        mix-blend-mode: difference;
     }
 }
 

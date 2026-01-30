@@ -601,19 +601,20 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 					</div>
 				</div>
 				{ settings.showTimer && (
-					<div className="trivia-score-item">
+					<div className="trivia-score-item trivia-timer-item">
 						<div className="trivia-score-label">
 							{ __( 'Timer', 'trivia-challenge-block' ) }
 						</div>
-						<div
-							className={ `trivia-score-value ${
-								timeLeft <= 5 ? 'trivia-timer-warning' : ''
-							}` }
-							role="timer"
-							aria-live="assertive"
-							aria-atomic="true"
-						>
-							{ timeLeft }s
+						<div className="trivia-timer-container">
+							<div
+								className={ `trivia-timer-bar${ timeLeft <= 5 ? ' trivia-timer-warning' : '' }` }
+								style={ { width: `${ ( timeLeft / settings.timerDuration ) * 100 }%` } }
+								role="timer"
+								aria-live="assertive"
+								aria-valuenow={ timeLeft }
+								aria-valuemax={ settings.timerDuration }
+							/>
+							<span className="trivia-timer-text">{ timeLeft }s</span>
 						</div>
 					</div>
 				) }
