@@ -193,6 +193,109 @@ const clearQuizState = () => {
 };
 
 /**
+ * Leaderboard localStorage helpers
+ */
+const LEADERBOARD_KEY = 'trivia_challenge_leaderboard';
+
+const loadLeaderboard = () => {
+	try {
+		const data = localStorage.getItem( LEADERBOARD_KEY );
+		return data ? JSON.parse( data ) : {};
+	} catch ( error ) {
+		console.warn( 'Failed to load leaderboard:', error );
+		return {};
+	}
+};
+
+const saveLeaderboard = ( leaderboard ) => {
+	try {
+		localStorage.setItem( LEADERBOARD_KEY, JSON.stringify( leaderboard ) );
+	} catch ( error ) {
+		console.warn( 'Failed to save leaderboard:', error );
+	}
+};
+
+const updateLeaderboard = ( category, score, total, difficulty ) => {
+	const leaderboard = loadLeaderboard();
+	const existing = leaderboard[ category ];
+
+	// Only update if new score is better (higher percentage, or same percentage with harder difficulty)
+	const newPercentage = score / total;
+	const existingPercentage = existing ? existing.score / existing.total : 0;
+	const difficultyRank = { easy: 1, medium: 2, hard: 3, any: 2 };
+
+	if (
+		! existing ||
+		newPercentage > existingPercentage ||
+		( newPercentage === existingPercentage &&
+			difficultyRank[ difficulty ] > difficultyRank[ existing.difficulty ] )
+	) {
+		leaderboard[ category ] = {
+			score,
+			total,
+			difficulty,
+			date: new Date().toISOString(),
+		};
+		saveLeaderboard( leaderboard );
+		return true; // New best!
+	}
+	return false;
+};
+
+const clearLeaderboard = () => {
+	try {
+		localStorage.removeItem( LEADERBOARD_KEY );
+	} catch ( error ) {
+		console.warn( 'Failed to clear leaderboard:', error );
+	}
+};
+
+/**
+ * Sound effect utilities
+ */
+const soundCache = {};
+
+const preloadSound = ( name, url ) => {
+	if ( ! soundCache[ name ] ) {
+		const audio = new Audio( url );
+		audio.preload = 'auto';
+		soundCache[ name ] = audio;
+	}
+	return soundCache[ name ];
+};
+
+const playSound = ( name, settings ) => {
+	if ( ! settings.enableSound ) {
+		return;
+	}
+
+	const audio = soundCache[ name ];
+	if ( audio ) {
+		audio.currentTime = 0;
+		audio.play().catch( ( error ) => {
+			// Browser may block autoplay before user interaction
+			console.warn( 'Sound playback failed:', error );
+		} );
+	}
+};
+
+const getSoundUrl = ( filename ) => {
+	// Get the plugin URL from settings or construct from current script
+	const settings = getSettings();
+	if ( settings.pluginUrl ) {
+		return `${ settings.pluginUrl }assets/sounds/${ filename }`;
+	}
+	// Fallback: try to detect from current script location
+	const scripts = document.querySelectorAll( 'script[src*="trivia-challenge"]' );
+	if ( scripts.length > 0 ) {
+		const src = scripts[ 0 ].src;
+		const baseUrl = src.substring( 0, src.lastIndexOf( '/build/' ) + 1 );
+		return `${ baseUrl }assets/sounds/${ filename }`;
+	}
+	return '';
+};
+
+/**
  * Fetch questions from WordPress REST API (which proxies to Open Trivia DB)
  */
 const fetchTriviaQuestions = async (
@@ -250,6 +353,8 @@ const SetupScreen = ( { onStart } ) => {
 	);
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ hasResumeState, setHasResumeState ] = useState( false );
+	const [ leaderboard, setLeaderboard ] = useState( {} );
+	const [ showClearConfirm, setShowClearConfirm ] = useState( false );
 
 	useEffect( () => {
 		const savedState = loadQuizState();
@@ -259,6 +364,16 @@ const SetupScreen = ( { onStart } ) => {
 				savedState.questions.length > 0
 		);
 	}, [] );
+
+	useEffect( () => {
+		setLeaderboard( loadLeaderboard() );
+	}, [] );
+
+	const handleClearLeaderboard = () => {
+		clearLeaderboard();
+		setLeaderboard( {} );
+		setShowClearConfirm( false );
+	};
 
 	const handleStartClick = async () => {
 		setIsLoading( true );
@@ -398,6 +513,58 @@ const SetupScreen = ( { onStart } ) => {
 					</button>
 				) }
 			</div>
+
+			{ Object.keys( leaderboard ).length > 0 && (
+				<div className="trivia-leaderboard">
+					<h3 className="trivia-leaderboard-title">
+						{ __( 'Your Best Scores', 'trivia-challenge-block' ) }
+					</h3>
+					<div className="trivia-leaderboard-list">
+						{ Object.entries( leaderboard ).map( ( [ category, data ] ) => {
+							const percentage = Math.round( ( data.score / data.total ) * 100 );
+							const isPerfect = percentage === 100;
+							return (
+								<div key={ category } className="trivia-leaderboard-item">
+									<span className="trivia-leaderboard-category">
+										{ isPerfect && <span className="trivia-perfect-badge">⭐</span> }
+										{ category.charAt( 0 ).toUpperCase() + category.slice( 1 ) }
+									</span>
+									<span className="trivia-leaderboard-score">
+										{ data.score }/{ data.total }
+										<span className="trivia-leaderboard-difficulty">
+											({ data.difficulty })
+										</span>
+									</span>
+								</div>
+							);
+						} ) }
+					</div>
+					{ showClearConfirm ? (
+						<div className="trivia-clear-confirm">
+							<span>{ __( 'Clear all scores?', 'trivia-challenge-block' ) }</span>
+							<button
+								className="trivia-btn-link"
+								onClick={ handleClearLeaderboard }
+							>
+								{ __( 'Yes', 'trivia-challenge-block' ) }
+							</button>
+							<button
+								className="trivia-btn-link"
+								onClick={ () => setShowClearConfirm( false ) }
+							>
+								{ __( 'No', 'trivia-challenge-block' ) }
+							</button>
+						</div>
+					) : (
+						<button
+							className="trivia-btn-link trivia-clear-scores"
+							onClick={ () => setShowClearConfirm( true ) }
+						>
+							{ __( 'Clear Scores', 'trivia-challenge-block' ) }
+						</button>
+					) }
+				</div>
+			) }
 		</div>
 	);
 };
@@ -419,6 +586,8 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 	const [ shuffledAnswers, setShuffledAnswers ] = useState( [] );
 	const [ timeLeft, setTimeLeft ] = useState( settings.timerDuration );
 	const [ streak, setStreak ] = useState( resumeState?.streak || 0 );
+	const [ scoreAnimating, setScoreAnimating ] = useState( false );
+	const [ streakAnimating, setStreakAnimating ] = useState( false );
 	const timerRef = useRef( null );
 	const announceRef = useRef( null );
 
@@ -499,6 +668,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 
 		const isCorrect = originalIndex === currentQuestion.correct;
 		if ( isCorrect ) {
+			playSound( 'correct', settings );
 			const timeBonus = settings.showTimer
 				? Math.floor( timeLeft / 2 )
 				: 0;
@@ -507,6 +677,10 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 			setScore( score + totalPoints );
 			setCorrectAnswers( correctAnswers + 1 );
 			setStreak( streak + 1 );
+			setStreakAnimating( true );
+			setTimeout( () => setStreakAnimating( false ), 400 );
+			setScoreAnimating( true );
+			setTimeout( () => setScoreAnimating( false ), 300 );
 
 			if ( announceRef.current ) {
 				announceRef.current.textContent = __(
@@ -515,6 +689,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 				);
 			}
 		} else {
+			playSound( 'wrong', settings );
 			setStreak( 0 );
 
 			if ( announceRef.current ) {
@@ -549,6 +724,21 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 			role="main"
 			aria-labelledby="current-question"
 		>
+			{ /* Progress bar */ }
+			<div
+				className="trivia-progress-bar"
+				role="progressbar"
+				aria-valuenow={ currentQuestionIndex + 1 }
+				aria-valuemin={ 1 }
+				aria-valuemax={ questions.length }
+				aria-label={ __( 'Quiz progress', 'trivia-challenge-block' ) }
+			>
+				<div
+					className="trivia-progress-fill"
+					style={ { width: `${ ( ( currentQuestionIndex + 1 ) / questions.length ) * 100 }%` } }
+				/>
+			</div>
+
 			{ /* Screen reader announcements */ }
 			<div
 				ref={ announceRef }
@@ -575,29 +765,30 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 					<div className="trivia-score-label">
 						{ __( 'Score', 'trivia-challenge-block' ) }
 					</div>
-					<div className="trivia-score-value" aria-live="polite">
+					<div className={ `trivia-score-value${ scoreAnimating ? ' score-pop' : '' }` } aria-live="polite">
 						{ score }
 					</div>
 				</div>
 				{ settings.showTimer && (
-					<div className="trivia-score-item">
+					<div className="trivia-score-item trivia-timer-item">
 						<div className="trivia-score-label">
 							{ __( 'Timer', 'trivia-challenge-block' ) }
 						</div>
-						<div
-							className={ `trivia-score-value ${
-								timeLeft <= 5 ? 'trivia-timer-warning' : ''
-							}` }
-							role="timer"
-							aria-live="assertive"
-							aria-atomic="true"
-						>
-							{ timeLeft }s
+						<div className="trivia-timer-container">
+							<div
+								className={ `trivia-timer-bar${ timeLeft <= 5 ? ' trivia-timer-warning' : '' }` }
+								style={ { width: `${ ( timeLeft / settings.timerDuration ) * 100 }%` } }
+								role="timer"
+								aria-live="assertive"
+								aria-valuenow={ timeLeft }
+								aria-valuemax={ settings.timerDuration }
+							/>
+							<span className="trivia-timer-text">{ timeLeft }s</span>
 						</div>
 					</div>
 				) }
 				{ settings.showStreak && streak > 0 && (
-					<div className="trivia-score-item trivia-streak">
+					<div className={ `trivia-score-item trivia-streak${ streakAnimating ? ' streak-glow' : '' }${ streak >= 5 ? ' streak-fire' : '' }` }>
 						<div className="trivia-score-label">
 							{ __( 'Streak', 'trivia-challenge-block' ) }
 						</div>
@@ -728,7 +919,22 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 /**
  * Results Screen Component
  */
-const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart } ) => {
+const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart, category, difficulty } ) => {
+	const [ isNewBest, setIsNewBest ] = useState( false );
+
+	useEffect( () => {
+		if ( category ) {
+			const newBest = updateLeaderboard( category, correctAnswers, totalQuestions, difficulty );
+			setIsNewBest( newBest );
+		}
+	}, [ category, correctAnswers, totalQuestions, difficulty ] );
+
+	// Play completion sound
+	useEffect( () => {
+		const settings = getSettings();
+		playSound( 'complete', settings );
+	}, [] );
+
 	const percentage = Math.round( ( correctAnswers / totalQuestions ) * 100 );
 
 	let message = '';
@@ -780,6 +986,11 @@ const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart } ) => {
 					{ correctAnswers }/{ totalQuestions }
 				</span>
 			</div>
+			{ isNewBest && (
+				<div className="trivia-new-best" aria-live="polite">
+					{ __( '🎉 New Best Score!', 'trivia-challenge-block' ) }
+				</div>
+			) }
 			<div className="trivia-results-percentage" aria-live="polite">
 				{ percentage }%
 			</div>
@@ -808,6 +1019,16 @@ const TriviaApp = () => {
 	const [ results, setResults ] = useState( { correct: 0, total: 0 } );
 	const [ error, setError ] = useState( null );
 	const [ resumeState, setResumeState ] = useState( null );
+	const [ quizMeta, setQuizMeta ] = useState( { category: null, difficulty: null } );
+
+	// Preload sounds
+	useEffect( () => {
+		if ( settings.enableSound ) {
+			preloadSound( 'correct', getSoundUrl( 'correct.mp3' ) );
+			preloadSound( 'wrong', getSoundUrl( 'wrong.mp3' ) );
+			preloadSound( 'complete', getSoundUrl( 'complete.mp3' ) );
+		}
+	}, [ settings.enableSound ] );
 
 	const handleStart = async ( category, difficulty, resume = false ) => {
 		setError( null );
@@ -844,6 +1065,7 @@ const TriviaApp = () => {
 		}
 
 		setQuestions( fetchedQuestions );
+		setQuizMeta( { category, difficulty } );
 		setResumeState( null );
 		setScreen( 'quiz' );
 	};
@@ -887,6 +1109,8 @@ const TriviaApp = () => {
 					correctAnswers={ results.correct }
 					totalQuestions={ results.total }
 					onRestart={ handleRestart }
+					category={ quizMeta.category }
+					difficulty={ quizMeta.difficulty }
 				/>
 			) }
 		</div>
