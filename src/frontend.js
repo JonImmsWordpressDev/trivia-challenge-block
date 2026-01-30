@@ -419,6 +419,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 	const [ shuffledAnswers, setShuffledAnswers ] = useState( [] );
 	const [ timeLeft, setTimeLeft ] = useState( settings.timerDuration );
 	const [ streak, setStreak ] = useState( resumeState?.streak || 0 );
+	const [ scoreAnimating, setScoreAnimating ] = useState( false );
 	const timerRef = useRef( null );
 	const announceRef = useRef( null );
 
@@ -507,6 +508,8 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 			setScore( score + totalPoints );
 			setCorrectAnswers( correctAnswers + 1 );
 			setStreak( streak + 1 );
+			setScoreAnimating( true );
+			setTimeout( () => setScoreAnimating( false ), 300 );
 
 			if ( announceRef.current ) {
 				announceRef.current.textContent = __(
@@ -590,7 +593,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 					<div className="trivia-score-label">
 						{ __( 'Score', 'trivia-challenge-block' ) }
 					</div>
-					<div className="trivia-score-value" aria-live="polite">
+					<div className={ `trivia-score-value${ scoreAnimating ? ' score-pop' : '' }` } aria-live="polite">
 						{ score }
 					</div>
 				</div>
