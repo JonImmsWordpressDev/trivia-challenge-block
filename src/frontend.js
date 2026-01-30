@@ -193,6 +193,64 @@ const clearQuizState = () => {
 };
 
 /**
+ * Leaderboard localStorage helpers
+ */
+const LEADERBOARD_KEY = 'trivia_challenge_leaderboard';
+
+const loadLeaderboard = () => {
+	try {
+		const data = localStorage.getItem( LEADERBOARD_KEY );
+		return data ? JSON.parse( data ) : {};
+	} catch ( error ) {
+		console.warn( 'Failed to load leaderboard:', error );
+		return {};
+	}
+};
+
+const saveLeaderboard = ( leaderboard ) => {
+	try {
+		localStorage.setItem( LEADERBOARD_KEY, JSON.stringify( leaderboard ) );
+	} catch ( error ) {
+		console.warn( 'Failed to save leaderboard:', error );
+	}
+};
+
+const updateLeaderboard = ( category, score, total, difficulty ) => {
+	const leaderboard = loadLeaderboard();
+	const existing = leaderboard[ category ];
+
+	// Only update if new score is better (higher percentage, or same percentage with harder difficulty)
+	const newPercentage = score / total;
+	const existingPercentage = existing ? existing.score / existing.total : 0;
+	const difficultyRank = { easy: 1, medium: 2, hard: 3, any: 2 };
+
+	if (
+		! existing ||
+		newPercentage > existingPercentage ||
+		( newPercentage === existingPercentage &&
+			difficultyRank[ difficulty ] > difficultyRank[ existing.difficulty ] )
+	) {
+		leaderboard[ category ] = {
+			score,
+			total,
+			difficulty,
+			date: new Date().toISOString(),
+		};
+		saveLeaderboard( leaderboard );
+		return true; // New best!
+	}
+	return false;
+};
+
+const clearLeaderboard = () => {
+	try {
+		localStorage.removeItem( LEADERBOARD_KEY );
+	} catch ( error ) {
+		console.warn( 'Failed to clear leaderboard:', error );
+	}
+};
+
+/**
  * Fetch questions from WordPress REST API (which proxies to Open Trivia DB)
  */
 const fetchTriviaQuestions = async (
