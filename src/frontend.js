@@ -251,6 +251,51 @@ const clearLeaderboard = () => {
 };
 
 /**
+ * Sound effect utilities
+ */
+const soundCache = {};
+
+const preloadSound = ( name, url ) => {
+	if ( ! soundCache[ name ] ) {
+		const audio = new Audio( url );
+		audio.preload = 'auto';
+		soundCache[ name ] = audio;
+	}
+	return soundCache[ name ];
+};
+
+const playSound = ( name, settings ) => {
+	if ( ! settings.enableSound ) {
+		return;
+	}
+
+	const audio = soundCache[ name ];
+	if ( audio ) {
+		audio.currentTime = 0;
+		audio.play().catch( ( error ) => {
+			// Browser may block autoplay before user interaction
+			console.warn( 'Sound playback failed:', error );
+		} );
+	}
+};
+
+const getSoundUrl = ( filename ) => {
+	// Get the plugin URL from settings or construct from current script
+	const settings = getSettings();
+	if ( settings.pluginUrl ) {
+		return `${ settings.pluginUrl }assets/sounds/${ filename }`;
+	}
+	// Fallback: try to detect from current script location
+	const scripts = document.querySelectorAll( 'script[src*="trivia-challenge"]' );
+	if ( scripts.length > 0 ) {
+		const src = scripts[ 0 ].src;
+		const baseUrl = src.substring( 0, src.lastIndexOf( '/build/' ) + 1 );
+		return `${ baseUrl }assets/sounds/${ filename }`;
+	}
+	return '';
+};
+
+/**
  * Fetch questions from WordPress REST API (which proxies to Open Trivia DB)
  */
 const fetchTriviaQuestions = async (
