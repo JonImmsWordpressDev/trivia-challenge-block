@@ -35,6 +35,23 @@
                 color: var(--wp--preset--color--contrast, #666);
             }
 
+            .trivia-preview-settings {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 8px;
+                margin-bottom: 20px;
+
+                span {
+                    background: #1e1e1e;
+                    color: #fff;
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    font-size: 0.85em;
+                    font-weight: 500;
+                }
+            }
+
             .trivia-preview-features {
                 display: flex;
                 flex-wrap: wrap;
