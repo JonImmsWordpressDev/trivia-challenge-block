@@ -549,6 +549,21 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 			role="main"
 			aria-labelledby="current-question"
 		>
+			{ /* Progress bar */ }
+			<div
+				className="trivia-progress-bar"
+				role="progressbar"
+				aria-valuenow={ currentQuestionIndex + 1 }
+				aria-valuemin={ 1 }
+				aria-valuemax={ questions.length }
+				aria-label={ __( 'Quiz progress', 'trivia-challenge-block' ) }
+			>
+				<div
+					className="trivia-progress-fill"
+					style={ { width: `${ ( ( currentQuestionIndex + 1 ) / questions.length ) * 100 }%` } }
+				/>
+			</div>
+
 			{ /* Screen reader announcements */ }
 			<div
 				ref={ announceRef }
