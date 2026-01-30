@@ -872,7 +872,16 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 /**
  * Results Screen Component
  */
-const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart } ) => {
+const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart, category, difficulty } ) => {
+	const [ isNewBest, setIsNewBest ] = useState( false );
+
+	useEffect( () => {
+		if ( category ) {
+			const newBest = updateLeaderboard( category, correctAnswers, totalQuestions, difficulty );
+			setIsNewBest( newBest );
+		}
+	}, [ category, correctAnswers, totalQuestions, difficulty ] );
+
 	const percentage = Math.round( ( correctAnswers / totalQuestions ) * 100 );
 
 	let message = '';
@@ -924,6 +933,11 @@ const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart } ) => {
 					{ correctAnswers }/{ totalQuestions }
 				</span>
 			</div>
+			{ isNewBest && (
+				<div className="trivia-new-best" aria-live="polite">
+					{ __( '🎉 New Best Score!', 'trivia-challenge-block' ) }
+				</div>
+			) }
 			<div className="trivia-results-percentage" aria-live="polite">
 				{ percentage }%
 			</div>
@@ -952,6 +966,7 @@ const TriviaApp = () => {
 	const [ results, setResults ] = useState( { correct: 0, total: 0 } );
 	const [ error, setError ] = useState( null );
 	const [ resumeState, setResumeState ] = useState( null );
+	const [ quizMeta, setQuizMeta ] = useState( { category: null, difficulty: null } );
 
 	const handleStart = async ( category, difficulty, resume = false ) => {
 		setError( null );
@@ -988,6 +1003,7 @@ const TriviaApp = () => {
 		}
 
 		setQuestions( fetchedQuestions );
+		setQuizMeta( { category, difficulty } );
 		setResumeState( null );
 		setScreen( 'quiz' );
 	};
@@ -1031,6 +1047,8 @@ const TriviaApp = () => {
 					correctAnswers={ results.correct }
 					totalQuestions={ results.total }
 					onRestart={ handleRestart }
+					category={ quizMeta.category }
+					difficulty={ quizMeta.difficulty }
 				/>
 			) }
 		</div>
