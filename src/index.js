@@ -3,6 +3,16 @@
  */
 import { registerBlockType } from '@wordpress/blocks';
 import { __ } from '@wordpress/i18n';
+import {
+	InspectorControls,
+	useBlockProps,
+} from '@wordpress/block-editor';
+import {
+	PanelBody,
+	SelectControl,
+	RangeControl,
+	ToggleControl,
+} from '@wordpress/components';
 
 /**
  * Internal dependencies
