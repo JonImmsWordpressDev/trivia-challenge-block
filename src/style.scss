@@ -494,6 +494,91 @@
     opacity: 0.8;
 }
 
+// Leaderboard
+.trivia-leaderboard {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--wp--preset--color--contrast, rgba(0, 0, 0, 0.1));
+}
+
+.trivia-leaderboard-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--wp--preset--color--contrast, #000);
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.trivia-leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.trivia-leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--wp--preset--color--base, #f8f9fa);
+    border-radius: 4px;
+    border: 1px solid var(--wp--preset--color--contrast, rgba(0, 0, 0, 0.1));
+}
+
+.trivia-leaderboard-category {
+    font-weight: 600;
+    color: var(--wp--preset--color--contrast, #000);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trivia-perfect-badge {
+    font-size: 1.2em;
+}
+
+.trivia-leaderboard-score {
+    font-weight: 700;
+    color: var(--wp--preset--color--contrast, #000);
+}
+
+.trivia-leaderboard-difficulty {
+    font-weight: 400;
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin-left: 6px;
+}
+
+.trivia-btn-link {
+    background: none;
+    border: none;
+    color: var(--wp--preset--color--contrast, #666);
+    font-size: 0.9em;
+    cursor: pointer;
+    padding: 4px 8px;
+    text-decoration: underline;
+    font-family: inherit;
+
+    &:hover {
+        color: var(--wp--preset--color--contrast, #000);
+    }
+}
+
+.trivia-clear-scores {
+    display: block;
+    margin: 16px auto 0;
+    opacity: 0.7;
+}
+
+.trivia-clear-confirm {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    font-size: 0.9em;
+}
+
 // Responsive Design
 @media (max-width: 768px) {
     .trivia-challenge-container {

@@ -308,6 +308,8 @@ const SetupScreen = ( { onStart } ) => {
 	);
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ hasResumeState, setHasResumeState ] = useState( false );
+	const [ leaderboard, setLeaderboard ] = useState( {} );
+	const [ showClearConfirm, setShowClearConfirm ] = useState( false );
 
 	useEffect( () => {
 		const savedState = loadQuizState();
@@ -317,6 +319,16 @@ const SetupScreen = ( { onStart } ) => {
 				savedState.questions.length > 0
 		);
 	}, [] );
+
+	useEffect( () => {
+		setLeaderboard( loadLeaderboard() );
+	}, [] );
+
+	const handleClearLeaderboard = () => {
+		clearLeaderboard();
+		setLeaderboard( {} );
+		setShowClearConfirm( false );
+	};
 
 	const handleStartClick = async () => {
 		setIsLoading( true );
@@ -456,6 +468,58 @@ const SetupScreen = ( { onStart } ) => {
 					</button>
 				) }
 			</div>
+
+			{ Object.keys( leaderboard ).length > 0 && (
+				<div className="trivia-leaderboard">
+					<h3 className="trivia-leaderboard-title">
+						{ __( 'Your Best Scores', 'trivia-challenge-block' ) }
+					</h3>
+					<div className="trivia-leaderboard-list">
+						{ Object.entries( leaderboard ).map( ( [ category, data ] ) => {
+							const percentage = Math.round( ( data.score / data.total ) * 100 );
+							const isPerfect = percentage === 100;
+							return (
+								<div key={ category } className="trivia-leaderboard-item">
+									<span className="trivia-leaderboard-category">
+										{ isPerfect && <span className="trivia-perfect-badge">⭐</span> }
+										{ category.charAt( 0 ).toUpperCase() + category.slice( 1 ) }
+									</span>
+									<span className="trivia-leaderboard-score">
+										{ data.score }/{ data.total }
+										<span className="trivia-leaderboard-difficulty">
+											({ data.difficulty })
+										</span>
+									</span>
+								</div>
+							);
+						} ) }
+					</div>
+					{ showClearConfirm ? (
+						<div className="trivia-clear-confirm">
+							<span>{ __( 'Clear all scores?', 'trivia-challenge-block' ) }</span>
+							<button
+								className="trivia-btn-link"
+								onClick={ handleClearLeaderboard }
+							>
+								{ __( 'Yes', 'trivia-challenge-block' ) }
+							</button>
+							<button
+								className="trivia-btn-link"
+								onClick={ () => setShowClearConfirm( false ) }
+							>
+								{ __( 'No', 'trivia-challenge-block' ) }
+							</button>
+						</div>
+					) : (
+						<button
+							className="trivia-btn-link trivia-clear-scores"
+							onClick={ () => setShowClearConfirm( true ) }
+						>
+							{ __( 'Clear Scores', 'trivia-challenge-block' ) }
+						</button>
+					) }
+				</div>
+			) }
 		</div>
 	);
 };
