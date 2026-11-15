@@ -29,6 +29,7 @@ wp_localize_script(
 	array(
 		'apiUrl'            => rest_url( 'trivia-challenge/v1/' ),
 		'nonce'             => wp_create_nonce( 'wp_rest' ),
+		'pluginUrl'         => TRIVIA_CHALLENGE_BLOCK_URL,
 		'defaultCategory'   => isset( $attributes['defaultCategory'] ) ? $attributes['defaultCategory'] : 'mixed',
 		'defaultDifficulty' => isset( $attributes['defaultDifficulty'] ) ? $attributes['defaultDifficulty'] : 'medium',
 		'questionsPerQuiz'  => isset( $attributes['questionsPerQuiz'] ) ? $attributes['questionsPerQuiz'] : 10,
