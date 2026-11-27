@@ -185,8 +185,9 @@ class Trivia_Challenge_API {
 	 * @return array|WP_Error
 	 */
 	private static function fetch_from_api( $category, $difficulty, $amount ) {
-		// Build API URL.
-		$fetch_amount = 'hard' === $difficulty ? 15 : $amount;
+		// Build API URL. Hard mode fetches extra so the long-question filter has
+		// some to choose from, capped at the Open Trivia DB limit of 50.
+		$fetch_amount = 'hard' === $difficulty ? min( 50, max( 15, $amount + 5 ) ) : $amount;
 		$url          = self::API_BASE_URL . '?amount=' . $fetch_amount . '&type=multiple';
 
 		if ( self::CATEGORY_MAP[ $category ] ) {
