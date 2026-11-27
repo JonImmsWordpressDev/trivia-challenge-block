@@ -45,6 +45,13 @@ class Trivia_Challenge_API {
 	);
 
 	/**
+	 * Questions to request from Open Trivia DB for a cached pool (its per-call maximum).
+	 *
+	 * @var int
+	 */
+	const POOL_SIZE = 50;
+
+	/**
 	 * Initialize the API handler
 	 */
 	public static function init() {
@@ -131,6 +138,9 @@ class Trivia_Challenge_API {
 	/**
 	 * Get questions from API or cache
 	 *
+	 * A pool of questions is cached per category and difficulty, and each request
+	 * gets a random selection from it, so a replay does not repeat the last quiz.
+	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error
 	 */
@@ -139,41 +149,89 @@ class Trivia_Challenge_API {
 		$difficulty = $request->get_param( 'difficulty' );
 		$amount     = $request->get_param( 'amount' );
 
-		// Create cache key.
-		$cache_key = 'trivia_challenge_' . md5( $category . $difficulty . $amount );
+		$cache_key = 'trivia_challenge_pool_' . md5( $category . $difficulty );
+		$pool      = get_transient( $cache_key );
+		$cached    = is_array( $pool ) && count( $pool ) >= $amount;
 
-		// Try to get from cache.
-		$cached_questions = get_transient( $cache_key );
-		if ( false !== $cached_questions ) {
-			return new \WP_REST_Response(
-				array(
-					'success' => true,
-					'data'    => $cached_questions,
-					'cached'  => true,
-				),
-				200
-			);
+		if ( ! $cached ) {
+			$pool = self::fetch_pool( $category, $difficulty, $amount );
+
+			if ( is_wp_error( $pool ) ) {
+				return $pool;
+			}
+
+			$cache_duration = apply_filters( 'trivia_challenge_api_cache_duration', HOUR_IN_SECONDS );
+			set_transient( $cache_key, $pool, $cache_duration );
 		}
-
-		// Fetch from API.
-		$questions = self::fetch_from_api( $category, $difficulty, $amount );
-
-		if ( is_wp_error( $questions ) ) {
-			return $questions;
-		}
-
-		// Cache the results.
-		$cache_duration = apply_filters( 'trivia_challenge_api_cache_duration', HOUR_IN_SECONDS );
-		set_transient( $cache_key, $questions, $cache_duration );
 
 		return new \WP_REST_Response(
 			array(
 				'success' => true,
-				'data'    => $questions,
-				'cached'  => false,
+				'data'    => self::pick_questions( $pool, $difficulty, $amount ),
+				'cached'  => $cached,
 			),
 			200
 		);
+	}
+
+	/**
+	 * Fetch a question pool for a category and difficulty
+	 *
+	 * Asks for a full pool first. Some category and difficulty pairs have fewer
+	 * questions than that, so Open Trivia DB answers "not enough results"; those
+	 * pairs are remembered for a week and fetched at the size the quiz needs.
+	 *
+	 * @param string $category   Category.
+	 * @param string $difficulty Difficulty.
+	 * @param int    $amount     Number of questions the quiz needs.
+	 * @return array|WP_Error
+	 */
+	private static function fetch_pool( $category, $difficulty, $amount ) {
+		// Hard mode fetches extra so the long-question filter has some to choose
+		// from, capped at the Open Trivia DB limit of 50.
+		$small_size = 'hard' === $difficulty ? min( self::POOL_SIZE, max( 15, $amount + 5 ) ) : $amount;
+		$small_key  = 'trivia_challenge_small_' . md5( $category . $difficulty );
+
+		if ( false === get_transient( $small_key ) ) {
+			$pool = self::fetch_from_api( $category, $difficulty, self::POOL_SIZE );
+
+			if ( ! is_wp_error( $pool ) || 'not_enough_questions' !== $pool->get_error_code() ) {
+				return $pool;
+			}
+
+			set_transient( $small_key, 1, WEEK_IN_SECONDS );
+		}
+
+		return self::fetch_from_api( $category, $difficulty, $small_size );
+	}
+
+	/**
+	 * Pick a random set of questions from a pool
+	 *
+	 * @param array  $pool       Formatted questions.
+	 * @param string $difficulty Difficulty.
+	 * @param int    $amount     Number of questions.
+	 * @return array
+	 */
+	public static function pick_questions( $pool, $difficulty, $amount ) {
+		$questions = array_values( $pool );
+		shuffle( $questions );
+
+		// Prefer long questions for hard mode when there are enough of them.
+		if ( 'hard' === $difficulty ) {
+			$long_questions = array_filter(
+				$questions,
+				function ( $q ) {
+					return strlen( $q['q'] ) > 50;
+				}
+			);
+
+			if ( count( $long_questions ) >= $amount ) {
+				$questions = array_values( $long_questions );
+			}
+		}
+
+		return array_slice( $questions, 0, $amount );
 	}
 
 	/**
@@ -181,14 +239,11 @@ class Trivia_Challenge_API {
 	 *
 	 * @param string $category   Category.
 	 * @param string $difficulty Difficulty.
-	 * @param int    $amount     Number of questions.
+	 * @param int    $amount     Number of questions to request.
 	 * @return array|WP_Error
 	 */
 	private static function fetch_from_api( $category, $difficulty, $amount ) {
-		// Build API URL. Hard mode fetches extra so the long-question filter has
-		// some to choose from, capped at the Open Trivia DB limit of 50.
-		$fetch_amount = 'hard' === $difficulty ? min( 50, max( 15, $amount + 5 ) ) : $amount;
-		$url          = self::API_BASE_URL . '?amount=' . $fetch_amount . '&type=multiple';
+		$url = self::API_BASE_URL . '?amount=' . $amount . '&type=multiple';
 
 		if ( self::CATEGORY_MAP[ $category ] ) {
 			$url .= '&category=' . self::CATEGORY_MAP[ $category ];
@@ -220,6 +275,15 @@ class Trivia_Challenge_API {
 		$body = wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
 
+		// Open Trivia DB response code 1: the category has fewer questions than asked for.
+		if ( is_array( $data ) && isset( $data['response_code'] ) && 1 === $data['response_code'] ) {
+			return new \WP_Error(
+				'not_enough_questions',
+				__( 'API returned no questions', 'trivia-challenge-block' ),
+				array( 'status' => 500 )
+			);
+		}
+
 		if ( ! $data || 0 !== $data['response_code'] || empty( $data['results'] ) ) {
 			return new \WP_Error(
 				'api_error',
@@ -246,24 +310,6 @@ class Trivia_Challenge_API {
 				'correct'    => $correct_index,
 				'difficulty' => $item['difficulty'],
 			);
-		}
-
-		// Filter long questions for hard mode.
-		if ( 'hard' === $difficulty ) {
-			$long_questions = array_filter(
-				$questions,
-				function ( $q ) {
-					return strlen( $q['q'] ) > 50;
-				}
-			);
-
-			if ( count( $long_questions ) >= $amount ) {
-				$questions = array_slice( $long_questions, 0, $amount );
-			} else {
-				$questions = array_slice( $questions, 0, $amount );
-			}
-		} else {
-			$questions = array_slice( $questions, 0, $amount );
 		}
 
 		return $questions;

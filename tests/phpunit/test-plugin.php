@@ -90,7 +90,122 @@ class Plugin_Test extends WP_UnitTestCase {
 
 		$data = $response->get_data();
 		$this->assertCount( 20, $data['data'] );
-		$this->assertStringContainsString( 'amount=25', $requested_urls[0] );
+		$this->assertStringContainsString( 'amount=50', $requested_urls[0] );
+	}
+
+	/**
+	 * Build a fake Open Trivia DB reply for the pre_http_request filter
+	 *
+	 * @param array $results       Raw question results.
+	 * @param int   $response_code Open Trivia DB response code.
+	 * @return array
+	 */
+	private function fake_api_reply( $results, $response_code = 0 ) {
+		return array(
+			'headers'  => array(),
+			'body'     => wp_json_encode(
+				array(
+					'response_code' => $response_code,
+					'results'       => $results,
+				)
+			),
+			'response' => array(
+				'code'    => 200,
+				'message' => 'OK',
+			),
+			'cookies'  => array(),
+		);
+	}
+
+	/**
+	 * Build a request for the questions route
+	 *
+	 * @param string $category   Category.
+	 * @param string $difficulty Difficulty.
+	 * @param int    $amount     Amount.
+	 * @return WP_REST_Request
+	 */
+	private function questions_request( $category, $difficulty, $amount ) {
+		$request = new WP_REST_Request( 'GET', '/trivia-challenge/v1/questions' );
+		$request->set_param( 'category', $category );
+		$request->set_param( 'difficulty', $difficulty );
+		$request->set_param( 'amount', $amount );
+		return $request;
+	}
+
+	/**
+	 * Play Again gets a new selection from the cached pool, without a new API call
+	 */
+	public function test_replay_draws_new_questions_from_cached_pool() {
+		$requested_urls = array();
+		$fake_api       = function ( $pre, $args, $url ) use ( &$requested_urls ) {
+			$requested_urls[] = $url;
+			parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+			$results = array();
+			for ( $i = 0; $i < (int) $query['amount']; $i++ ) {
+				$results[] = array(
+					'question'          => 'Question ' . $i,
+					'correct_answer'    => 'Right',
+					'incorrect_answers' => array( 'Wrong 1', 'Wrong 2', 'Wrong 3' ),
+					'difficulty'        => 'medium',
+				);
+			}
+			return $this->fake_api_reply( $results );
+		};
+		add_filter( 'pre_http_request', $fake_api, 10, 3 );
+
+		$first  = \TriviaChallenge\Trivia_Challenge_API::get_questions( $this->questions_request( 'history', 'medium', 10 ) )->get_data();
+		$second = \TriviaChallenge\Trivia_Challenge_API::get_questions( $this->questions_request( 'history', 'medium', 10 ) )->get_data();
+
+		remove_filter( 'pre_http_request', $fake_api, 10 );
+
+		$this->assertCount( 1, $requested_urls );
+		$this->assertStringContainsString( 'amount=50', $requested_urls[0] );
+		$this->assertFalse( $first['cached'] );
+		$this->assertTrue( $second['cached'] );
+		$this->assertCount( 10, $first['data'] );
+		$this->assertCount( 10, $second['data'] );
+		$this->assertNotSame( wp_list_pluck( $first['data'], 'q' ), wp_list_pluck( $second['data'], 'q' ) );
+	}
+
+	/**
+	 * A category with fewer questions than a full pool still gets a quiz
+	 */
+	public function test_small_category_falls_back_to_quiz_size() {
+		$requested_urls = array();
+		$fake_api       = function ( $pre, $args, $url ) use ( &$requested_urls ) {
+			$requested_urls[] = $url;
+			parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+			if ( (int) $query['amount'] > 20 ) {
+				return $this->fake_api_reply( array(), 1 );
+			}
+			$results = array();
+			for ( $i = 0; $i < (int) $query['amount']; $i++ ) {
+				$results[] = array(
+					'question'          => 'Question ' . $i,
+					'correct_answer'    => 'Right',
+					'incorrect_answers' => array( 'Wrong 1', 'Wrong 2', 'Wrong 3' ),
+					'difficulty'        => 'easy',
+				);
+			}
+			return $this->fake_api_reply( $results );
+		};
+		add_filter( 'pre_http_request', $fake_api, 10, 3 );
+
+		$first = \TriviaChallenge\Trivia_Challenge_API::get_questions( $this->questions_request( 'mythology', 'easy', 10 ) )->get_data();
+
+		// Once the pool expires, the next fetch goes straight to the quiz size.
+		delete_transient( 'trivia_challenge_pool_' . md5( 'mythology' . 'easy' ) );
+		$second = \TriviaChallenge\Trivia_Challenge_API::get_questions( $this->questions_request( 'mythology', 'easy', 10 ) )->get_data();
+
+		remove_filter( 'pre_http_request', $fake_api, 10 );
+
+		$this->assertCount( 10, $first['data'] );
+		$this->assertCount( 10, $second['data'] );
+		$this->assertCount( 3, $requested_urls );
+		$this->assertStringContainsString( 'amount=50', $requested_urls[0] );
+		$this->assertStringContainsString( 'amount=10', $requested_urls[1] );
+		$this->assertStringContainsString( 'amount=10', $requested_urls[2] );
 	}
 
 	/**
