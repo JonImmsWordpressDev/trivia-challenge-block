@@ -66,7 +66,6 @@ Questions are fetched from the free Open Trivia Database API, ensuring fresh and
 * Leaderboards and high scores
 * Custom question import
 * Shortcode support
-* Multiple quiz instances per page
 * Social sharing
 * Color customization
 * Admin dashboard with statistics
@@ -127,7 +126,7 @@ Each quiz session includes 10 questions. This provides a good balance between en
 
 = Can I have multiple quizzes on the same page? =
 
-Multiple quiz instances per page will be supported in a future update.
+Yes. Each Trivia Challenge block keeps its own category, difficulty, timer and question count, and its own saved progress. Give a block an HTML anchor (Advanced panel) to keep its saved progress stable if you later reorder the blocks on the page.
 
 = Does this work with the classic editor? =
 

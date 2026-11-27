@@ -92,4 +92,46 @@ class Plugin_Test extends WP_UnitTestCase {
 		$this->assertCount( 20, $data['data'] );
 		$this->assertStringContainsString( 'amount=25', $requested_urls[0] );
 	}
+
+	/**
+	 * Two blocks on one page each render their own settings, with no shared id
+	 */
+	public function test_each_block_renders_its_own_settings() {
+		$science = render_block(
+			array(
+				'blockName'    => 'trivia-challenge/quiz-block',
+				'attrs'        => array(
+					'defaultCategory'  => 'science',
+					'questionsPerQuiz' => 5,
+				),
+				'innerBlocks'  => array(),
+				'innerHTML'    => '',
+				'innerContent' => array(),
+			)
+		);
+		$history = render_block(
+			array(
+				'blockName'    => 'trivia-challenge/quiz-block',
+				'attrs'        => array( 'defaultCategory' => 'history' ),
+				'innerBlocks'  => array(),
+				'innerHTML'    => '',
+				'innerContent' => array(),
+			)
+		);
+
+		foreach ( array( $science, $history ) as $html ) {
+			$this->assertStringNotContainsString( 'id="trivia-challenge-root"', $html );
+			$this->assertStringContainsString( 'class="trivia-challenge-root"', $html );
+		}
+
+		preg_match( '/data-settings="([^"]*)"/', $science, $science_match );
+		preg_match( '/data-settings="([^"]*)"/', $history, $history_match );
+		$science_settings = json_decode( html_entity_decode( $science_match[1], ENT_QUOTES ), true );
+		$history_settings = json_decode( html_entity_decode( $history_match[1], ENT_QUOTES ), true );
+
+		$this->assertSame( 'science', $science_settings['defaultCategory'] );
+		$this->assertSame( 5, $science_settings['questionsPerQuiz'] );
+		$this->assertSame( 'history', $history_settings['defaultCategory'] );
+		$this->assertSame( 10, $history_settings['questionsPerQuiz'] );
+	}
 }

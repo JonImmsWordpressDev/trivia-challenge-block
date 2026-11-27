@@ -1,27 +1,43 @@
 /**
  * WordPress dependencies
  */
-import { render, useState, useEffect, useRef } from '@wordpress/element';
+import {
+	render,
+	useState,
+	useEffect,
+	useRef,
+	createContext,
+	useContext,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
- * Get settings from localized script
+ * Get settings from localized script, with defaults for anything missing
  */
 const getSettings = () => {
-	return (
-		window.triviaChallengeSettings || {
-			apiUrl: '/wp-json/trivia-challenge/v1/',
-			nonce: '',
-			defaultCategory: 'mixed',
-			defaultDifficulty: 'medium',
-			questionsPerQuiz: 10,
-			timerDuration: 20,
-			showTimer: true,
-			showStreak: true,
-			enableSound: false,
-		}
-	);
+	return {
+		apiUrl: '/wp-json/trivia-challenge/v1/',
+		nonce: '',
+		defaultCategory: 'mixed',
+		defaultDifficulty: 'medium',
+		questionsPerQuiz: 10,
+		timerDuration: 20,
+		showTimer: true,
+		showStreak: true,
+		enableSound: false,
+		...( window.triviaChallengeSettings || {} ),
+	};
 };
+
+/**
+ * Each block's own settings (merged over the shared ones) and its resume-state key
+ */
+const SettingsContext = createContext( {
+	...getSettings(),
+	storageKey: 'trivia_challenge_state',
+} );
+
+const useSettings = () => useContext( SettingsContext );
 
 /**
  * Category mapping: Internal category names to OpenTDB category IDs
@@ -166,17 +182,17 @@ const shuffleArray = ( array ) => {
  */
 const STORAGE_KEY = 'trivia_challenge_state';
 
-const saveQuizState = ( state ) => {
+const saveQuizState = ( key, state ) => {
 	try {
-		localStorage.setItem( STORAGE_KEY, JSON.stringify( state ) );
+		localStorage.setItem( key, JSON.stringify( state ) );
 	} catch ( error ) {
 		console.warn( 'Failed to save quiz state:', error );
 	}
 };
 
-const loadQuizState = () => {
+const loadQuizState = ( key ) => {
 	try {
-		const state = localStorage.getItem( STORAGE_KEY );
+		const state = localStorage.getItem( key );
 		return state ? JSON.parse( state ) : null;
 	} catch ( error ) {
 		console.warn( 'Failed to load quiz state:', error );
@@ -184,9 +200,9 @@ const loadQuizState = () => {
 	}
 };
 
-const clearQuizState = () => {
+const clearQuizState = ( key ) => {
 	try {
-		localStorage.removeItem( STORAGE_KEY );
+		localStorage.removeItem( key );
 	} catch ( error ) {
 		console.warn( 'Failed to clear quiz state:', error );
 	}
@@ -344,7 +360,7 @@ const fetchTriviaQuestions = async (
  * Setup Screen Component
  */
 const SetupScreen = ( { onStart } ) => {
-	const settings = getSettings();
+	const settings = useSettings();
 	const [ selectedCategory, setSelectedCategory ] = useState(
 		settings.defaultCategory
 	);
@@ -357,7 +373,7 @@ const SetupScreen = ( { onStart } ) => {
 	const [ showClearConfirm, setShowClearConfirm ] = useState( false );
 
 	useEffect( () => {
-		const savedState = loadQuizState();
+		const savedState = loadQuizState( settings.storageKey );
 		setHasResumeState(
 			savedState &&
 				savedState.questions &&
@@ -573,7 +589,7 @@ const SetupScreen = ( { onStart } ) => {
  * Quiz Screen Component
  */
 const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
-	const settings = getSettings();
+	const settings = useSettings();
 	const [ currentQuestionIndex, setCurrentQuestionIndex ] = useState(
 		resumeState?.currentQuestionIndex || 0
 	);
@@ -630,7 +646,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 	// Save state to localStorage
 	useEffect( () => {
 		if ( questions.length > 0 ) {
-			saveQuizState( {
+			saveQuizState( settings.storageKey, {
 				questions,
 				currentQuestionIndex,
 				score,
@@ -705,7 +721,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
 		if ( currentQuestionIndex < questions.length - 1 ) {
 			setCurrentQuestionIndex( currentQuestionIndex + 1 );
 		} else {
-			clearQuizState();
+			clearQuizState( settings.storageKey );
 			onComplete( correctAnswers, questions.length );
 		}
 	};
@@ -920,6 +936,7 @@ const QuizScreen = ( { questions, onComplete, onRestart, resumeState } ) => {
  * Results Screen Component
  */
 const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart, category, difficulty } ) => {
+	const settings = useSettings();
 	const [ isNewBest, setIsNewBest ] = useState( false );
 
 	useEffect( () => {
@@ -931,7 +948,6 @@ const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart, category, d
 
 	// Play completion sound
 	useEffect( () => {
-		const settings = getSettings();
 		playSound( 'complete', settings );
 	}, [] );
 
@@ -1013,7 +1029,7 @@ const ResultsScreen = ( { correctAnswers, totalQuestions, onRestart, category, d
  * Main App Component
  */
 const TriviaApp = () => {
-	const settings = getSettings();
+	const settings = useSettings();
 	const [ screen, setScreen ] = useState( 'setup' );
 	const [ questions, setQuestions ] = useState( [] );
 	const [ results, setResults ] = useState( { correct: 0, total: 0 } );
@@ -1034,7 +1050,7 @@ const TriviaApp = () => {
 		setError( null );
 
 		if ( resume ) {
-			const savedState = loadQuizState();
+			const savedState = loadQuizState( settings.storageKey );
 			if ( savedState && savedState.questions ) {
 				setQuestions( savedState.questions );
 				setResumeState( savedState );
@@ -1076,7 +1092,7 @@ const TriviaApp = () => {
 	};
 
 	const handleRestart = () => {
-		clearQuizState();
+		clearQuizState( settings.storageKey );
 		setScreen( 'setup' );
 		setQuestions( [] );
 		setResults( { correct: 0, total: 0 } );
@@ -1118,15 +1134,64 @@ const TriviaApp = () => {
 };
 
 /**
- * Initialize the app
+ * Read one block's settings from its root element.
+ *
+ * @param {HTMLElement} rootElement The block's root element.
+ * @return {Object} The block settings, or an empty object.
+ */
+const parseBlockSettings = ( rootElement ) => {
+	try {
+		return JSON.parse( rootElement.dataset.settings || '{}' );
+	} catch ( error ) {
+		console.warn( 'Invalid trivia block settings:', error );
+		return {};
+	}
+};
+
+/**
+ * Resume state is kept per block. The first block without an anchor keeps the
+ * original key, so a single quiz on a page resumes exactly as before.
+ *
+ * @param {HTMLElement} rootElement The block's root element.
+ * @param {number}      index       The block's position on the page.
+ * @return {string} The localStorage key for this block's resume state.
+ */
+const getStorageKey = ( rootElement, index ) => {
+	const anchor = rootElement.parentElement?.id;
+	if ( anchor ) {
+		return `${ STORAGE_KEY }_${ anchor }`;
+	}
+	return index === 0 ? STORAGE_KEY : `${ STORAGE_KEY }_${ index }`;
+};
+
+/**
+ * Initialize the app on every quiz block on the page
  */
 const initTriviaApp = () => {
-	const rootElement = document.getElementById( 'trivia-challenge-root' );
+	// The id selector keeps markup rendered before this change (e.g. a page cache) working.
+	const rootElements = document.querySelectorAll(
+		'.trivia-challenge-root, #trivia-challenge-root'
+	);
 
-	if ( rootElement && ! rootElement.dataset.initialized ) {
+	rootElements.forEach( ( rootElement, index ) => {
+		if ( rootElement.dataset.initialized ) {
+			return;
+		}
 		rootElement.dataset.initialized = 'true';
-		render( <TriviaApp />, rootElement );
-	}
+
+		const settings = {
+			...getSettings(),
+			...parseBlockSettings( rootElement ),
+			storageKey: getStorageKey( rootElement, index ),
+		};
+
+		render(
+			<SettingsContext.Provider value={ settings }>
+				<TriviaApp />
+			</SettingsContext.Provider>,
+			rootElement
+		);
+	} );
 };
 
 // Initialize when DOM is ready
