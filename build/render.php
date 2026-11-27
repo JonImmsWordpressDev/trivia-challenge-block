@@ -22,22 +22,26 @@ wp_enqueue_script(
 	true
 );
 
-// Pass settings to JavaScript.
+// Pass the settings every block on the page shares to JavaScript.
 wp_localize_script(
 	'trivia-challenge-frontend',
 	'triviaChallengeSettings',
 	array(
-		'apiUrl'            => rest_url( 'trivia-challenge/v1/' ),
-		'nonce'             => wp_create_nonce( 'wp_rest' ),
-		'pluginUrl'         => TRIVIA_CHALLENGE_BLOCK_URL,
-		'defaultCategory'   => isset( $attributes['defaultCategory'] ) ? $attributes['defaultCategory'] : 'mixed',
-		'defaultDifficulty' => isset( $attributes['defaultDifficulty'] ) ? $attributes['defaultDifficulty'] : 'medium',
-		'questionsPerQuiz'  => isset( $attributes['questionsPerQuiz'] ) ? $attributes['questionsPerQuiz'] : 10,
-		'timerDuration'     => isset( $attributes['timerDuration'] ) ? $attributes['timerDuration'] : 20,
-		'showTimer'         => isset( $attributes['showTimer'] ) ? $attributes['showTimer'] : true,
-		'showStreak'        => isset( $attributes['showStreak'] ) ? $attributes['showStreak'] : true,
-		'enableSound'       => isset( $attributes['enableSound'] ) ? $attributes['enableSound'] : false,
+		'apiUrl'    => rest_url( 'trivia-challenge/v1/' ),
+		'nonce'     => wp_create_nonce( 'wp_rest' ),
+		'pluginUrl' => TRIVIA_CHALLENGE_BLOCK_URL,
 	)
+);
+
+// This block's own settings go on its root, so several blocks on one page keep their own.
+$block_settings = array(
+	'defaultCategory'   => isset( $attributes['defaultCategory'] ) ? $attributes['defaultCategory'] : 'mixed',
+	'defaultDifficulty' => isset( $attributes['defaultDifficulty'] ) ? $attributes['defaultDifficulty'] : 'medium',
+	'questionsPerQuiz'  => isset( $attributes['questionsPerQuiz'] ) ? $attributes['questionsPerQuiz'] : 10,
+	'timerDuration'     => isset( $attributes['timerDuration'] ) ? $attributes['timerDuration'] : 20,
+	'showTimer'         => isset( $attributes['showTimer'] ) ? $attributes['showTimer'] : true,
+	'showStreak'        => isset( $attributes['showStreak'] ) ? $attributes['showStreak'] : true,
+	'enableSound'       => isset( $attributes['enableSound'] ) ? $attributes['enableSound'] : false,
 );
 
 // Get block wrapper attributes.
@@ -50,5 +54,5 @@ $wrapper_attributes = get_block_wrapper_attributes(
 // Render the block HTML.
 ?>
 <div <?php echo $wrapper_attributes; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
-	<div id="trivia-challenge-root"></div>
+	<div class="trivia-challenge-root" data-settings="<?php echo esc_attr( wp_json_encode( $block_settings ) ); ?>"></div>
 </div>
