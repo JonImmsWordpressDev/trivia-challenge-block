@@ -34,11 +34,14 @@ wp_localize_script(
 );
 
 // This block's own settings go on its root, so several blocks on one page keep their own.
+// WordPress fills unsaved attributes from the registered defaults, which follow the admin
+// settings (Trivia_Challenge_Block::apply_admin_defaults()); these fallbacks match them.
+$admin_settings = \TriviaChallenge\Trivia_Challenge_Admin::get_settings();
 $block_settings = array(
-	'defaultCategory'   => isset( $attributes['defaultCategory'] ) ? $attributes['defaultCategory'] : 'mixed',
-	'defaultDifficulty' => isset( $attributes['defaultDifficulty'] ) ? $attributes['defaultDifficulty'] : 'medium',
-	'questionsPerQuiz'  => isset( $attributes['questionsPerQuiz'] ) ? $attributes['questionsPerQuiz'] : 10,
-	'timerDuration'     => isset( $attributes['timerDuration'] ) ? $attributes['timerDuration'] : 20,
+	'defaultCategory'   => isset( $attributes['defaultCategory'] ) ? $attributes['defaultCategory'] : $admin_settings['default_category'],
+	'defaultDifficulty' => isset( $attributes['defaultDifficulty'] ) ? $attributes['defaultDifficulty'] : $admin_settings['default_difficulty'],
+	'questionsPerQuiz'  => isset( $attributes['questionsPerQuiz'] ) ? $attributes['questionsPerQuiz'] : (int) $admin_settings['questions_per_quiz'],
+	'timerDuration'     => isset( $attributes['timerDuration'] ) ? $attributes['timerDuration'] : (int) $admin_settings['timer_duration'],
 	'showTimer'         => isset( $attributes['showTimer'] ) ? $attributes['showTimer'] : true,
 	'showStreak'        => isset( $attributes['showStreak'] ) ? $attributes['showStreak'] : true,
 	'enableSound'       => isset( $attributes['enableSound'] ) ? $attributes['enableSound'] : false,

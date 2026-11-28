@@ -160,7 +160,9 @@ class Trivia_Challenge_API {
 				return $pool;
 			}
 
-			$cache_duration = apply_filters( 'trivia_challenge_api_cache_duration', HOUR_IN_SECONDS );
+			$settings       = Trivia_Challenge_Admin::get_settings();
+			$cache_hours    = max( 1, absint( $settings['cache_duration'] ) );
+			$cache_duration = apply_filters( 'trivia_challenge_api_cache_duration', $cache_hours * HOUR_IN_SECONDS );
 			set_transient( $cache_key, $pool, $cache_duration );
 		}
 
