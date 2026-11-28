@@ -47,6 +47,7 @@ class Trivia_Challenge_Block {
 	 */
 	private function init_hooks() {
 		add_action( 'init', array( $this, 'register_block' ) );
+		add_filter( 'block_type_metadata', array( $this, 'apply_admin_defaults' ) );
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_filter( 'block_categories_all', array( $this, 'register_block_category' ), 10, 2 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
@@ -69,6 +70,46 @@ class Trivia_Challenge_Block {
 	public function register_block() {
 		// Register the block from block.json.
 		register_block_type( TRIVIA_CHALLENGE_BLOCK_PATH . 'build' );
+	}
+
+	/**
+	 * Use the Settings > Trivia Challenge values as the block's attribute defaults
+	 *
+	 * The registered defaults are what the editor gives a new block and what
+	 * render.php gets for any attribute a block has not saved, so both follow
+	 * the admin settings. Attributes a block has saved are left alone.
+	 *
+	 * @param array $metadata Block metadata from block.json.
+	 * @return array
+	 */
+	public function apply_admin_defaults( $metadata ) {
+		if ( ! isset( $metadata['name'] ) || 'trivia-challenge/quiz-block' !== $metadata['name'] ) {
+			return $metadata;
+		}
+
+		$settings = Trivia_Challenge_Admin::get_settings();
+		$defaults = array();
+
+		if ( Trivia_Challenge_API::validate_category( $settings['default_category'] ) ) {
+			$defaults['defaultCategory'] = $settings['default_category'];
+		}
+		if ( Trivia_Challenge_API::validate_difficulty( $settings['default_difficulty'] ) ) {
+			$defaults['defaultDifficulty'] = $settings['default_difficulty'];
+		}
+		if ( absint( $settings['questions_per_quiz'] ) > 0 ) {
+			$defaults['questionsPerQuiz'] = absint( $settings['questions_per_quiz'] );
+		}
+		if ( absint( $settings['timer_duration'] ) > 0 ) {
+			$defaults['timerDuration'] = absint( $settings['timer_duration'] );
+		}
+
+		foreach ( $defaults as $attribute => $value ) {
+			if ( isset( $metadata['attributes'][ $attribute ] ) ) {
+				$metadata['attributes'][ $attribute ]['default'] = $value;
+			}
+		}
+
+		return $metadata;
 	}
 
 	/**

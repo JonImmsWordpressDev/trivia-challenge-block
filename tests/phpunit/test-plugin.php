@@ -249,4 +249,123 @@ class Plugin_Test extends WP_UnitTestCase {
 		$this->assertSame( 'history', $history_settings['defaultCategory'] );
 		$this->assertSame( 10, $history_settings['questionsPerQuiz'] );
 	}
+
+	/**
+	 * The admin settings become the block's attribute defaults
+	 */
+	public function test_admin_settings_become_block_defaults() {
+		update_option(
+			'trivia_challenge_settings',
+			array(
+				'default_category'   => 'history',
+				'default_difficulty' => 'hard',
+				'questions_per_quiz' => 15,
+				'timer_duration'     => 30,
+			)
+		);
+
+		$metadata = \TriviaChallenge\Trivia_Challenge_Block::get_instance()->apply_admin_defaults(
+			wp_json_file_decode( TRIVIA_CHALLENGE_BLOCK_PATH . 'build/block.json', array( 'associative' => true ) )
+		);
+
+		$this->assertSame( 'history', $metadata['attributes']['defaultCategory']['default'] );
+		$this->assertSame( 'hard', $metadata['attributes']['defaultDifficulty']['default'] );
+		$this->assertSame( 15, $metadata['attributes']['questionsPerQuiz']['default'] );
+		$this->assertSame( 30, $metadata['attributes']['timerDuration']['default'] );
+		$this->assertTrue( $metadata['attributes']['showTimer']['default'] );
+
+		delete_option( 'trivia_challenge_settings' );
+	}
+
+	/**
+	 * An unknown category or difficulty in the option keeps the block.json default
+	 */
+	public function test_invalid_admin_values_keep_block_json_defaults() {
+		update_option(
+			'trivia_challenge_settings',
+			array(
+				'default_category'   => 'not-a-category',
+				'default_difficulty' => 'impossible',
+			)
+		);
+
+		$metadata = \TriviaChallenge\Trivia_Challenge_Block::get_instance()->apply_admin_defaults(
+			wp_json_file_decode( TRIVIA_CHALLENGE_BLOCK_PATH . 'build/block.json', array( 'associative' => true ) )
+		);
+
+		$this->assertSame( 'mixed', $metadata['attributes']['defaultCategory']['default'] );
+		$this->assertSame( 'medium', $metadata['attributes']['defaultDifficulty']['default'] );
+
+		delete_option( 'trivia_challenge_settings' );
+	}
+
+	/**
+	 * A block renders the admin defaults for attributes it has not saved, and keeps saved ones
+	 */
+	public function test_render_uses_admin_defaults_for_unsaved_attributes() {
+		update_option(
+			'trivia_challenge_settings',
+			array(
+				'default_category'   => 'history',
+				'questions_per_quiz' => 15,
+			)
+		);
+		unregister_block_type( 'trivia-challenge/quiz-block' );
+		\TriviaChallenge\Trivia_Challenge_Block::get_instance()->register_block();
+
+		$html = render_block(
+			array(
+				'blockName'    => 'trivia-challenge/quiz-block',
+				'attrs'        => array( 'questionsPerQuiz' => 5 ),
+				'innerBlocks'  => array(),
+				'innerHTML'    => '',
+				'innerContent' => array(),
+			)
+		);
+		preg_match( '/data-settings="([^"]*)"/', $html, $match );
+		$settings = json_decode( html_entity_decode( $match[1], ENT_QUOTES ), true );
+
+		$this->assertSame( 'history', $settings['defaultCategory'] );
+		$this->assertSame( 5, $settings['questionsPerQuiz'] );
+
+		delete_option( 'trivia_challenge_settings' );
+		unregister_block_type( 'trivia-challenge/quiz-block' );
+		\TriviaChallenge\Trivia_Challenge_Block::get_instance()->register_block();
+	}
+
+	/**
+	 * The question pool is cached for the admin cache duration, in hours
+	 */
+	public function test_cache_duration_setting_sets_pool_expiry() {
+		update_option( 'trivia_challenge_settings', array( 'cache_duration' => 24 ) );
+		delete_transient( 'trivia_challenge_pool_' . md5( 'geographyeasy' ) );
+
+		$results = array();
+		for ( $i = 0; $i < 50; $i++ ) {
+			$results[] = array(
+				'question'          => 'Geography question ' . $i . '?',
+				'correct_answer'    => 'Right',
+				'incorrect_answers' => array( 'Wrong 1', 'Wrong 2', 'Wrong 3' ),
+				'difficulty'        => 'easy',
+			);
+		}
+		$fake_api = function () use ( $results ) {
+			return $this->fake_api_reply( $results );
+		};
+		$duration = null;
+		$capture  = function ( $seconds ) use ( &$duration ) {
+			$duration = $seconds;
+			return $seconds;
+		};
+		add_filter( 'pre_http_request', $fake_api );
+		add_filter( 'trivia_challenge_api_cache_duration', $capture );
+
+		\TriviaChallenge\Trivia_Challenge_API::get_questions( $this->questions_request( 'geography', 'easy', 10 ) );
+
+		remove_filter( 'pre_http_request', $fake_api );
+		remove_filter( 'trivia_challenge_api_cache_duration', $capture );
+		delete_option( 'trivia_challenge_settings' );
+
+		$this->assertSame( 24 * HOUR_IN_SECONDS, $duration );
+	}
 }
